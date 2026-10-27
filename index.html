@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Art of Noticing: A Perception Mystery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the visual novel to enhance the game feel */
+        @import url('https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Share+Tech+Mono&display=swap');
+
+        body {
+            font-family: 'Crimson Text', serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            overflow: hidden; /* Prevent scrolling, keep it focused like an app */
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1c1c1c 0%, #2a2a2a 100%);
+        }
+
+        /* The main scene area where characters and backgrounds would go */
+        .scene-area {
+            width: 90%;
+            max-width: 800px;
+            height: 50vh;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            background-color: #222;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.5s ease;
+        }
+
+        /* Abstract backgrounds for different scenes */
+        .bg-office { background: linear-gradient(to bottom, #3a3a3a, #222); border-bottom: 4px solid #555; }
+        .bg-street { background: linear-gradient(to bottom, #1a2a3a, #111); border-bottom: 4px solid #34495e; }
+        .bg-cafe { background: linear-gradient(to bottom, #4a3a2a, #2a1a0a); border-bottom: 4px solid #8e44ad; }
+        .bg-puzzle { background: radial-gradient(circle, #2c3e50, #000); border: 2px dashed #f39c12; }
+
+        /* Character styling (using abstract shapes/emojis for now) */
+        .character {
+            font-size: 6rem;
+            position: absolute;
+            bottom: -10px;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5));
+        }
+        
+        .char-left { left: 15%; transform: scale(0.9); opacity: 0.7; }
+        .char-right { right: 15%; transform: scale(0.9); opacity: 0.7; }
+        .char-center { left: 50%; transform: translateX(-50%) scale(1); opacity: 1; z-index: 10; }
+        
+        .speaking {
+            transform: scale(1.05) translateY(-10px) !important; /* Emphasize speaker */
+            opacity: 1 !important;
+            z-index: 20;
+        }
+
+        /* The dialog box where text appears */
+        .dialog-box {
+            width: 90%;
+            max-width: 800px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 180px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .speaker-name {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.2rem;
+            color: #f39c12;
+            margin-bottom: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .dialog-text {
+            font-size: 1.3rem;
+            line-height: 1.6;
+        }
+
+        /* Choices container */
+        .choices-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .choice-btn {
+            background: #333;
+            border: 1px solid #555;
+            color: #ddd;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+        }
+
+        .choice-btn:hover {
+            background: #f39c12;
+            color: #000;
+            border-color: #f39c12;
+            transform: translateX(5px);
+        }
+
+        /* Interactive Elements / Puzzles */
+        .interactive-object {
+            position: absolute;
+            font-size: 3rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .interactive-object:hover {
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 10px yellow);
+        }
+
+        /* Typewriter effect cursor */
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background-color: #f39c12;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Stats display */
+        .stats-hud {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Share Tech Mono', monospace;
+            color: #2ecc71;
+            border: 1px solid #2ecc71;
+            z-index: 100;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="game-container" id="game-container">
+        
+        <!-- Heads Up Display -->
+        <div class="stats-hud" id="stats-hud" style="display: none;">
+            Perception: <span id="stat-perception">0</span><br>
+            Logic: <span id="stat-logic">0</span>
+        </div>
+
+        <!-- Main Scene Area -->
+        <div class="scene-area bg-office" id="scene-area">
+            <!-- Characters will be injected here -->
+            <div id="char-slot-left" class="character char-left"></div>
+            <div id="char-slot-center" class="character char-center"></div>
+            <div id="char-slot-right" class="character char-right"></div>
+            
+            <!-- Interactive elements layer -->
+            <div id="interactive-layer" style="position: absolute; width:100%; height:100%; top:0; left:0; pointer-events: none;"></div>
+        </div>
+
+        <!-- Dialog Box -->
+        <div class="dialog-box" id="dialog-box">
+            <div class="speaker-name" id="speaker-name">Dr. Aris</div>
+            <div class="dialog-text">
+                <span id="dialog-content">Loading...</span><span class="cursor" id="cursor"></span>
+            </div>
+            <div class="choices-container" id="choices-container">
+                <!-- Choices injected here -->
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // Game State
+    let currentState = 'intro_1';
+    let typeWriterTimeout;
+    let isTyping = false;
+    let fullTextToType = "";
+    
+    // Player Stats
+    let stats = {
+        perception: 0,
+        logic: 0
+    };
+
+    // Characters dictionary for easy reference
+    const chars = {
+        dr_aris: { name: "Dr. Aris", emoji: "🕵️‍♂️" },
+        student: { name: "You", emoji: "👤" },
+        witness: { name: "Mr. Blank", emoji: "🥸" },
+        none: { name: "", emoji: "" }
+    };
+
+    // DOM Elements
+    const sceneArea = document.getElementById('scene-area');
+    const speakerNameEl = document.getElementById('speaker-name');
+    const dialogContentEl = document.getElementById('dialog-content');
+    const choicesContainer = document.getElementById('choices-container');
+    const cursorEl = document.getElementById('cursor');
+    const interactiveLayer = document.getElementById('interactive-layer');
+    
+    const charLeft = document.getElementById('char-slot-left');
+    const charCenter = document.getElementById('char-slot-center');
+    const charRight = document.getElementById('char-slot-right');
+
+    const statsHud = document.getElementById('stats-hud');
+    const statPerception = document.getElementById('stat-perception');
+    const statLogic = document.getElementById('stat-logic');
+
+    // The core of the Visual Novel: The Script
+    // Each key is a state. It contains text, speaker, background, characters, and choices.
+    const storyData = {
+        intro_1: {
+            speaker: "dr_aris",
+            text: "Welcome to my office. I am Dr. Aris. I hold doctorates in Psychology and Mathematics, but my true passion is... Detection.",
+            bg: "bg-office",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "Nice to meet you. I'm here for the lesson.", next: "intro_2" },
+                { text: "Math, Psychology, AND a Detective? Sounds busy.", next: "intro_2" }
+            ]
+        },
+        intro_2: {
+            speaker: "dr_aris",
+            text: "Most people look, but they do not see. They count, but they do not calculate. Today, we will test your perception.",
+            bg: "bg-office",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "I consider myself pretty observant.", next: "puzzle_1_intro" },
+                { text: "I'm ready. Test me.", next: "puzzle_1_intro" }
+            ]
+        },
+        puzzle_1_intro: {
+            speaker: "dr_aris",
+            text: "We shall see. Look at the sequence I'm writing on the board. Tell me, what comes next? \n 2, 6, 12, 20, 30, ... ?",
+            bg: "bg-office",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "40", next: "puzzle_1_wrong", statChange: { logic: -1 } },
+                { text: "42", next: "puzzle_1_correct", statChange: { logic: 2 } },
+                { text: "38", next: "puzzle_1_wrong", statChange: { logic: -1 } },
+                { text: "I don't see the pattern.", next: "puzzle_1_explain", statChange: { logic: 0 } }
+            ]
+        },
+        puzzle_1_wrong: {
+            speaker: "dr_aris",
+            text: "Incorrect. You made an assumption without checking the differences. The differences are 4, 6, 8, 10... the next difference is 12. 30 + 12 is 42.",
+            bg: "bg-office",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "Ah, I see it now.", next: "transition_street" }
+            ]
+        },
+        puzzle_1_explain: {
+            speaker: "dr_aris",
+            text: "Honesty is good. Look at the gaps. 6-2=4. 12-6=6. 20-12=8. The gaps are increasing even numbers. The next gap is 12. So, 30 + 12 = 42.",
+            bg: "bg-office",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "Makes perfect sense.", next: "transition_street" }
+            ]
+        },
+        puzzle_1_correct: {
+            speaker: "dr_aris",
+            text: "Excellent! n^2 + n, or simply adding consecutive even numbers. Your logical foundation is sound. But logic alone is not enough for a detective.",
+            bg: "bg-office",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "What else do I need?", next: "transition_street" }
+            ]
+        },
+        transition_street: {
+            speaker: "dr_aris",
+            text: "Come with me to the street. We must observe subjects in their natural habitat. Pay close attention.",
+            bg: "bg-office",
+            characters: { left: "student", right: "dr_aris" },
+            speaking: "right",
+            choices: [
+                { text: "[Follow Dr. Aris outside]", next: "street_observe_1", action: "showHud" }
+            ]
+        },
+        street_observe_1: {
+            speaker: "none",
+            text: "You stand on a busy corner. Dr. Aris points to a man sitting at a cafe.",
+            bg: "bg-street",
+            characters: { left: "dr_aris", right: "witness" },
+            speaking: "none",
+            choices: [
+                { text: "What am I looking for?", next: "street_observe_2" }
+            ]
+        },
+        street_observe_2: {
+            speaker: "dr_aris",
+            text: "Tell me about Mr. Blank over there. Take 5 seconds to look at him, then I will ask you a question.",
+            bg: "bg-street",
+            characters: { left: "dr_aris", right: "witness" },
+            speaking: "left",
+            action: "setupObservationPuzzle",
+            choices: [
+                { text: "Okay, I'm looking.", next: "street_observe_test" }
+            ]
+        },
+        street_observe_test: {
+            speaker: "dr_aris",
+            text: "Don't look at him now! (He steps in front of you). Tell me, was he wearing glasses?",
+            bg: "bg-street",
+            characters: { center: "dr_aris" }, // Dr Aris blocks view
+            speaking: "center",
+            choices: [
+                { text: "Yes.", next: "street_observe_correct", statChange: { perception: 2 } },
+                { text: "No.", next: "street_observe_wrong", statChange: { perception: -1 } },
+                { text: "I didn't notice.", next: "street_observe_honest", statChange: { perception: 0 } }
+            ]
+        },
+        street_observe_correct: {
+            speaker: "dr_aris",
+            text: "Very good. You didn't just register 'a man', you registered details. The glasses (🥸) were a key feature.",
+            bg: "bg-street",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "It was an educated guess.", next: "psych_lesson_1" },
+                { text: "I made sure to scan his face.", next: "psych_lesson_1" }
+            ]
+        },
+        street_observe_wrong: {
+            speaker: "dr_aris",
+            text: "Incorrect. He was indeed wearing glasses (🥸). You suffered from 'inattentional blindness'—looking without registering.",
+            bg: "bg-street",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "I guess I wasn't focused enough.", next: "psych_lesson_1" }
+            ]
+        },
+        street_observe_honest: {
+            speaker: "dr_aris",
+            text: "At least you are aware of your blind spots. He was wearing glasses (🥸). Our brains filter out what they deem 'unimportant'.",
+            bg: "bg-street",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "How do I fix that?", next: "psych_lesson_1" }
+            ]
+        },
+        psych_lesson_1: {
+            speaker: "dr_aris",
+            text: "In psychology, we study heuristics—mental shortcuts. Your brain assumes a 'standard' man unless told to look for anomalies. A detective actively searches for anomalies.",
+            bg: "bg-cafe",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "So, I need to consciously look for details.", next: "interactive_puzzle_intro" }
+            ]
+        },
+        
+        interactive_puzzle_intro: {
+            speaker: "dr_aris",
+            text: "Exactly. Now, a practical test. I have dropped an important clue in this room. You must find it. Click on the anomaly.",
+            bg: "bg-puzzle",
+            characters: { left: "dr_aris" },
+            speaking: "left",
+            action: "startInteractivePuzzle",
+            choices: [] // Empty choices, waiting for click event
+        },
+
+        interactive_puzzle_win: {
+            speaker: "dr_aris",
+            text: "Aha! You found the golden key. It requires both perception to spot it in the noise, and logic to deduce it doesn't belong.",
+            bg: "bg-office",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "That was tricky.", next: "conclusion" }
+            ]
+        },
+
+        conclusion: {
+            speaker: "dr_aris",
+            text: "You have taken your first steps. Remember: Mathematics provides structure, Psychology understands the mind, but Perception connects you to reality. Class dismissed.",
+            bg: "bg-office",
+            characters: { center: "dr_aris" },
+            speaking: "center",
+            choices: [
+                { text: "[End Game]", next: "end_screen" }
+            ]
+        },
+        end_screen: {
+            speaker: "none",
+            text: "Thank you for playing 'The Art of Noticing'.",
+            bg: "bg-office",
+            characters: { },
+            speaking: "none",
+            action: "showFinalStats",
+            choices: [
+                { text: "Play Again", next: "intro_1", action: "resetGame" }
+            ]
+        }
+    };
+
+    // --- Engine Functions ---
+
+    function renderState(stateId) {
+        if (!storyData[stateId]) {
+            console.error("State not found:", stateId);
+            return;
+        }
+
+        currentState = stateId;
+        const state = storyData[stateId];
+
+        // 1. Update Background
+        sceneArea.className = `scene-area ${state.bg}`;
+
+        // 2. Execute any actions tied to this state
+        if (state.action) {
+            executeAction(state.action);
+        }
+
+        // 3. Update Characters
+        updateCharacters(state.characters, state.speaking);
+
+        // 4. Update Dialog UI
+        updateDialogUI(state.speaker, state.text);
+
+        // 5. Render Choices (delayed until typing is done, or immediately if empty)
+        choicesContainer.innerHTML = ''; // Clear old choices
+        if (state.choices.length === 0 && !state.action) {
+             // If no choices and no specific action holding it up, maybe wait for a click (implemented elsewhere)
+        }
+    }
+
+    function updateCharacters(charLayout, speakingRole) {
+        // Reset all
+        [charLeft, charCenter, charRight].forEach(el => {
+            el.innerHTML = '';
+            el.classList.remove('speaking');
+            el.style.display = 'none';
+        });
+
+        if (!charLayout) return;
+
+        if (charLayout.left) {
+            charLeft.innerHTML = chars[charLayout.left].emoji;
+            charLeft.style.display = 'block';
+            if (speakingRole === 'left') charLeft.classList.add('speaking');
+        }
+        if (charLayout.center) {
+            charCenter.innerHTML = chars[charLayout.center].emoji;
+            charCenter.style.display = 'block';
+            if (speakingRole === 'center') charCenter.classList.add('speaking');
+        }
+        if (charLayout.right) {
+            charRight.innerHTML = chars[charLayout.right].emoji;
+            charRight.style.display = 'block';
+            if (speakingRole === 'right') charRight.classList.add('speaking');
+        }
+    }
+
+    function updateDialogUI(speakerKey, text) {
+        if (speakerKey === "none") {
+            speakerNameEl.style.display = "none";
+        } else {
+            speakerNameEl.style.display = "block";
+            speakerNameEl.textContent = chars[speakerKey] ? chars[speakerKey].name : "???";
+        }
+
+        // Start Typewriter effect
+        startTypewriter(text);
+    }
+
+    function startTypewriter(text) {
+        clearTimeout(typeWriterTimeout);
+        dialogContentEl.innerHTML = '';
+        fullTextToType = text;
+        isTyping = true;
+        let index = 0;
+
+        // Hide choices while typing
+        choicesContainer.style.display = 'none';
+
+        function typeChar() {
+            if (index < fullTextToType.length) {
+                // Handle newlines basic conversion
+                if(fullTextToType.charAt(index) === '\n') {
+                     dialogContentEl.innerHTML += '<br>';
+                } else {
+                    dialogContentEl.innerHTML += fullTextToType.charAt(index);
+                }
+                
+                index++;
+                typeWriterTimeout = setTimeout(typeChar, 30); // Typing speed
+            } else {
+                finishTyping();
+            }
+        }
+        typeChar();
+    }
+
+    function finishTyping() {
+        clearTimeout(typeWriterTimeout);
+        isTyping = false;
+        dialogContentEl.innerHTML = fullTextToType.replace(/\n/g, '<br>');
+        
+        // Show choices once typing is done
+        renderChoices();
+    }
+
+    // Allow user to click dialog box to skip typing
+    document.getElementById('dialog-box').addEventListener('click', () => {
+        if (isTyping) {
+            finishTyping();
+        }
+    });
+
+    function renderChoices() {
+        const state = storyData[currentState];
+        choicesContainer.innerHTML = '';
+        choicesContainer.style.display = 'flex';
+
+        if (state.choices && state.choices.length > 0) {
+            state.choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = 'choice-btn';
+                btn.textContent = "> " + choice.text;
+                btn.onclick = (e) => {
+                    e.stopPropagation(); // Prevent dialog box click
+                    handleChoice(choice);
+                };
+                choicesContainer.appendChild(btn);
+            });
+        }
+    }
+
+    function handleChoice(choice) {
+        // Apply stat changes if any
+        if (choice.statChange) {
+            if (choice.statChange.logic) stats.logic += choice.statChange.logic;
+            if (choice.statChange.perception) stats.perception += choice.statChange.perception;
+            updateStatsHud();
+        }
+
+        // Apply action if attached to choice
+        if (choice.action) {
+            executeAction(choice.action);
+        }
+
+        // Go to next state
+        if (choice.next) {
+            renderState(choice.next);
+        }
+    }
+
+    function updateStatsHud() {
+        statPerception.textContent = stats.perception;
+        statLogic.textContent = stats.logic;
+    }
+
+    // --- Special Actions Logic ---
+    function executeAction(actionName) {
+        switch (actionName) {
+            case "showHud":
+                statsHud.style.display = "block";
+                break;
+            case "setupObservationPuzzle":
+                // Maybe wiggle the character or add a brief distraction
+                charRight.style.transform = "scale(0.9) rotate(5deg)";
+                setTimeout(()=> { charRight.style.transform = "scale(0.9) rotate(0deg)"; }, 500);
+                break;
+            case "startInteractivePuzzle":
+                createHiddenObjects();
+                break;
+            case "showFinalStats":
+                dialogContentEl.innerHTML += `<br><br><b>Final Assessment:</b><br>Perception: ${stats.perception}<br>Logic: ${stats.logic}`;
+                break;
+            case "resetGame":
+                stats = { perception: 0, logic: 0 };
+                updateStatsHud();
+                statsHud.style.display = "none";
+                break;
+        }
+    }
+
+    function createHiddenObjects() {
+        interactiveLayer.style.pointerEvents = "auto";
+        interactiveLayer.innerHTML = ''; // clear
+
+        // Generate some noise (distractors)
+        const distractors = ['📄', '☕', '🖋️', '📚', '📎'];
+        for (let i = 0; i < 15; i++) {
+            createObj(distractors[Math.floor(Math.random() * distractors.length)], false);
+        }
+
+        // Generate the target
+        createObj('🗝️', true);
+    }
+
+    function createObj(emoji, isTarget) {
+        const el = document.createElement('div');
+        el.className = 'interactive-object';
+        el.textContent = emoji;
+        
+        // Random position within safe bounds
+        const x = 10 + Math.random() * 70; // 10% to 80%
+        const y = 10 + Math.random() * 70;
+        
+        el.style.left = `${x}%`;
+        el.style.top = `${y}%`;
+        
+        // Add random rotation and size variation for distractors
+        if(!isTarget) {
+             const rot = Math.random() * 360;
+             const scale = 0.5 + Math.random() * 0.8;
+             el.style.transform = `rotate(${rot}deg) scale(${scale})`;
+             el.style.opacity = "0.6";
+             
+             el.onclick = () => {
+                 // Feedback for wrong click
+                 el.style.color = "red";
+                 stats.logic -= 0.5; // Penalty for guessing
+                 updateStatsHud();
+             };
+        } else {
+             // Target logic
+             el.style.fontSize = "2rem"; // Slightly smaller to hide better
+             el.onclick = () => {
+                 interactiveLayer.style.pointerEvents = "none";
+                 interactiveLayer.innerHTML = ''; // clear layer
+                 stats.perception += 3;
+                 updateStatsHud();
+                 renderState('interactive_puzzle_win');
+             };
+        }
+
+        interactiveLayer.appendChild(el);
+    }
+
+    // Start Game
+    window.onload = () => {
+        renderState('intro_1');
+        updateStatsHud();
+    };
+
+</script>
+</body>
+</html>
